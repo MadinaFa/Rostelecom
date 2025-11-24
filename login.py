@@ -490,3 +490,216 @@ def test_default_tab_phone(driver):
     assert "rt-tab--active" in active_class, "По умолчанию не выбрана вкладка 'Телефон'"
 
 
+
+# Клик на кнопку "пользовательского соглашения" : Открывается страница "https://b2c.passport.rt.ru/sso-static/agreement/agreement.html"
+def test_user_agreement_link_opens_correct_page(driver):
+    # Arrange
+    driver.get("https://b2c.passport.rt.ru/")
+    wait = WebDriverWait(driver, 10)
+    main_window = driver.current_window_handle
+
+    # Act
+    # Ожидаем и кликаем по ссылке "Пользовательское соглашение"
+    agreement_link = wait.until(
+        EC.element_to_be_clickable((By.ID, "rt-auth-agreement-link"))
+    )
+    agreement_link.click()
+
+    # Ожидаем появления второй вкладки
+    wait.until(lambda d: len(d.window_handles) > 1)
+
+    # Переключаемся на новую вкладку
+    for handle in driver.window_handles:
+        if handle != main_window:
+            driver.switch_to.window(handle)
+            break
+
+    # Assert
+    expected_url_prefix = "https://b2c.passport.rt.ru/sso-static/agreement/agreement.html"
+    assert driver.current_url.startswith(expected_url_prefix), \
+        f"Ожидался URL, начинающийся с {expected_url_prefix}, но получен: {driver.current_url}"
+
+    # Дополнительная проверка: убедимся, что страница содержит ключевой текст
+    page_text = driver.find_element(By.TAG_NAME, "body").text
+    assert "Пользовательское соглашение" in page_text, \
+        "На странице пользовательского соглашения не найден ожидаемый текст"
+
+
+
+
+# Клик на кнопку "Помощь": найден элемент с заголовком "Ваш безопасный ключ к сервисам Ростелекома"
+def test_help_button_opens_help_page(driver):
+    driver.get("https://b2c.passport.rt.ru")
+
+    # Ждём кнопку "Помощь"
+    help_button = WebDriverWait(driver, 10).until(
+        EC.element_to_be_clickable((By.ID, "faq-open"))
+    )
+
+    # Кликаем
+    help_button.click()
+
+    # 🟡 ЖДЁМ ПОЯВЛЕНИЕ НОВОЙ ВКЛАДКИ
+    WebDriverWait(driver, 10).until(
+        lambda d: len(d.window_handles) > 1
+    )
+
+    # Переключаемся на новую вкладку
+    driver.switch_to.window(driver.window_handles[-1])
+
+    # Ждём заголовок на странице
+    header = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((
+            By.XPATH, "//*[contains(text(), 'Ваш безопасный ключ к сервисам Ростелекома')]"
+        ))
+    )
+
+    assert header.is_displayed(), "Страница 'Помощь' не открылась или заголовок не найден"
+
+
+
+
+#  Клик на кнопку "Зарегистрироваться" на форме авторизации + нажать на кнопку "Зарегистрироваться" в форме "Регистрация" :не заполнено поле "ИМЯ"
+def test_registration_empty_firstname(driver):
+    driver.get("https://b2c.passport.rt.ru/")
+
+    wait = WebDriverWait(driver, 10)
+
+    # 1. Переход на форму регистрации из авторизации
+    register_btn = wait.until(
+        EC.element_to_be_clickable((By.ID, "kc-register"))
+    )
+    register_btn.click()
+
+    # Убеждаемся, что мы на форме регистрации
+    wait.until(
+        EC.presence_of_element_located((By.NAME, "lastName"))
+    )
+
+    # 2. НЕ заполняем поле "Имя"
+
+    # 3. Заполняем остальные обязательные поля минимально корректно
+    driver.find_element(By.NAME, "lastName").send_keys("Иванова")
+    driver.find_element(By.NAME, "address").send_keys("test@example.com")
+    driver.find_element(By.NAME, "password").send_keys("Test1234!")
+    driver.find_element(By.NAME, "password-confirm").send_keys("Test1234!")
+
+    # 4. Жмём Зарегистрироваться
+    driver.find_element(By.ID, "kc-register").click()
+
+    # 5. Ждём появления ошибки под полем "Имя"
+    error = wait.until(
+        EC.visibility_of_element_located(
+            (By.XPATH, "//span[contains(@class,'rt-input-container__meta--error') and text()='Введите имя']")
+        )
+    )
+
+    assert error.is_displayed(), "Ошибка 'Введите имя' не отображается при пустом поле Имя"
+
+
+
+
+#  Клик на кнопку "Зарегистрироваться" на форме авторизации + нажать на кнопку "Зарегистрироваться" в форме "Регистрация" : не заполнено поле "Фамилия"
+def test_registration_empty_lastname(driver):
+    driver.get("https://b2c.passport.rt.ru/")
+
+    wait = WebDriverWait(driver, 10)
+
+    # 1. Переход на форму регистрации из авторизации
+    register_btn = wait.until(
+        EC.element_to_be_clickable((By.ID, "kc-register"))
+    )
+    register_btn.click()
+
+    # Убеждаемся, что мы на форме регистрации
+    wait.until(
+        EC.presence_of_element_located((By.NAME, "firstName"))
+    )
+
+    # 2. НЕ заполняем поле "Фамилия"
+
+    # 3. Заполняем остальные обязательные поля минимально корректно
+    driver.find_element(By.NAME, "firstName").send_keys("Иван")
+    driver.find_element(By.NAME, "address").send_keys("test@example.com")
+    driver.find_element(By.NAME, "password").send_keys("Test1234!")
+    driver.find_element(By.NAME, "password-confirm").send_keys("Test1234!")
+
+    # 4. Жмём Зарегистрироваться
+    driver.find_element(By.ID, "kc-register").click()
+
+    # 5. Ждём появления ошибки под полем "Фамилия"
+    error = wait.until(
+        EC.visibility_of_element_located(
+            (By.XPATH, "//span[contains(@class,'rt-input-container__meta--error') and text()='Введите фамилию']")
+        )
+    )
+
+    assert error.is_displayed(), "Ошибка 'Введите фамилию' не отображается при пустом поле Фамилия"
+
+
+
+
+# #  Клик на кнопку "Зарегистрироваться" на форме авторизации + нажать на кнопку "Зарегистрироваться" в форме "Регистрация" : не заполнено поле "E-mail или мобильный телефон"
+def test_registration_empty_email(driver):
+    driver.get("https://b2c.passport.rt.ru/")
+
+    wait = WebDriverWait(driver, 10)
+
+    # Переход на форму регистрации
+    register_btn = wait.until(
+        EC.element_to_be_clickable((By.ID, "kc-register"))
+    )
+    register_btn.click()
+
+    # Убеждаемся, что форма загрузилась
+    wait.until(EC.presence_of_element_located((By.NAME, "firstName")))
+
+    # Заполняем остальные обязательные поля
+    driver.find_element(By.NAME, "firstName").send_keys("Иван")
+    driver.find_element(By.NAME, "lastName").send_keys("Иванов")
+    driver.find_element(By.NAME, "password").send_keys("Test1234!")
+    driver.find_element(By.NAME, "password-confirm").send_keys("Test1234!")
+
+    # НЕ заполняем поле e-mail/телефон
+    driver.find_element(By.ID, "kc-register").click()
+
+    # Ждём появления ошибки
+    error = wait.until(
+        EC.visibility_of_element_located(
+            (By.XPATH, "//span[contains(@class,'rt-input-container__meta--error') and text()='Введите email или телефон']")
+        )
+    )
+
+    assert error.is_displayed(), "Ошибка 'Введите email или телефон' не отображается при пустом поле"
+
+
+
+
+# #  Клик на кнопку "Зарегистрироваться" на форме авторизации + нажать на кнопку "Зарегистрироваться" в форме "Регистрация" : не заполнено поле "Пароль"
+def test_registration_empty_password(driver):
+    driver.get("https://b2c.passport.rt.ru/")
+
+    wait = WebDriverWait(driver, 10)
+
+    register_btn = wait.until(
+        EC.element_to_be_clickable((By.ID, "kc-register"))
+    )
+    register_btn.click()
+
+    wait.until(EC.presence_of_element_located((By.NAME, "firstName")))
+
+    driver.find_element(By.NAME, "firstName").send_keys("Иван")
+    driver.find_element(By.NAME, "lastName").send_keys("Иванов")
+    driver.find_element(By.NAME, "address").send_keys("test@example.com")
+    driver.find_element(By.NAME, "password-confirm").send_keys("Test1234!")
+
+    # НЕ заполняем поле пароль
+    driver.find_element(By.ID, "kc-register").click()
+
+    error = wait.until(
+        EC.visibility_of_element_located(
+            (By.XPATH, "//span[contains(@class,'rt-input-container__meta--error') and text()='Введите пароль']")
+        )
+    )
+
+    assert error.is_displayed(), "Ошибка 'Введите пароль' не отображается при пустом поле"
